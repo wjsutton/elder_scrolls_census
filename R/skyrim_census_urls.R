@@ -34,5 +34,30 @@ for(i in 1:length(npc_pages)){
 all_npc_urls <- all_npc_urls[!grepl('Category',all_npc_urls)]
 all_npc_urls <- paste0('https://en.uesp.net',all_npc_urls)
 
-npc <- read_html(all_npc_urls[1])
-npc %>% html_nodes('table') %>% html_table()
+for(i in 1:length(all_npc_urls)){
+  print(i)
+  sleep <- sample(10:40, 1, replace=TRUE)
+  Sys.sleep(sleep)
+  
+  npc <- read_html(all_npc_urls[i])
+  
+  wiki_infobox <- npc %>% html_nodes("table.wikitable.infobox") %>% html_table(fill=TRUE)
+  infobox_df <- as.data.frame(wiki_infobox[[1]])
+  
+  character_df <- rbind(infobox_df[,c(1:2)],infobox_df[,c(3:4)])
+  names(character_df) <- c('attribute','value')
+  character_df <- filter(character_df,attribute!=value)
+  character_df$url <- all_npc_urls[i]
+  character_df$name <- names(infobox_df)[1]
+  
+  if(i == 1){
+    all_characters_df <- character_df
+  }
+  
+  if(i > 1){
+    all_characters_df <- rbind(all_characters_df,character_df)
+  }
+  
+}
+
+write.csv(all_characters_df,'data/skyrim_npcs.csv',row.names = F)
