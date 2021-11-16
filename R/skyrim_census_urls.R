@@ -33,15 +33,23 @@ for(i in 1:length(npc_pages)){
 
 all_npc_urls <- all_npc_urls[!grepl('Category',all_npc_urls)]
 all_npc_urls <- paste0('https://en.uesp.net',all_npc_urls)
+unmapped_characters <- c()
 
 for(i in 1:length(all_npc_urls)){
   print(i)
-  sleep <- sample(10:40, 1, replace=TRUE)
+  sleep <- sample(5:20, 1, replace=TRUE)
   Sys.sleep(sleep)
   
   npc <- read_html(all_npc_urls[i])
   
-  wiki_infobox <- npc %>% html_nodes("table.wikitable.infobox") %>% html_table(fill=TRUE)
+  infobox_exists <- length(npc %>% html_nodes("table.wikitable.infobox"))
+  
+  if(infobox_exists == 0){
+    unmapped_characters <- c(unmapped_characters,all_npc_urls[i])
+    next
+  }
+  
+  wiki_infobox <- npc %>% html_nodes("table.wikitable.infobox") %>% html_table()
   infobox_df <- as.data.frame(wiki_infobox[[1]])
   
   character_df <- rbind(infobox_df[,c(1:2)],infobox_df[,c(3:4)])
@@ -60,4 +68,7 @@ for(i in 1:length(all_npc_urls)){
   
 }
 
-write.csv(all_characters_df,'data/skyrim_npcs.csv',row.names = F)
+write.csv(all_characters_df,'data/skyrim_npcs_with_infobox.csv',row.names = F)
+
+no_infobox_df <- data.frame(url=unmapped_characters,stringsAsFactors = F)
+write.csv(no_infobox_df,'data/skyrim_npcs_urls_without_infobox.csv',row.names = F)
