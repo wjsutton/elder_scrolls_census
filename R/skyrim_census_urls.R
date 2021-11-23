@@ -37,10 +37,13 @@ unmapped_characters <- c()
 
 for(i in 1:length(all_npc_urls)){
   print(i)
-  sleep <- sample(5:20, 1, replace=TRUE)
+  sleep <- sample(10:40, 1, replace=TRUE)
   Sys.sleep(sleep)
   
-  npc <- read_html(all_npc_urls[i])
+  npc <- tryCatch(
+    read_html(all_npc_urls[i])
+    ,error = function(e) { cat('Pausing download...\n'); Sys.sleep(25*60); read_html(all_npc_urls[i]) }
+  )
   
   infobox_exists <- length(npc %>% html_nodes("table.wikitable.infobox"))
   
@@ -50,14 +53,24 @@ for(i in 1:length(all_npc_urls)){
   }
   
   wiki_infobox <- npc %>% html_nodes("table.wikitable.infobox") %>% html_table()
-  infobox_df <- as.data.frame(wiki_infobox[[1]])
+  for(j in 1:length(wiki_infobox)){
+    infobox_df <- as.data.frame(wiki_infobox[[j]])
+    infobox_df$name <- names(infobox_df)[1]
+    names(infobox_df) <- c('attribute','value','attribute','value','name')
+    
+    if(j == 1){
+      total_infobox <- infobox_df
+    }
+    if(j > 1){
+      total_infobox <- rbind(total_infobox,infobox_df)
+    }
+  }
   
-  character_df <- rbind(infobox_df[,c(1:2)],infobox_df[,c(3:4)])
-  names(character_df) <- c('attribute','value')
+  character_df <- rbind(total_infobox[,c(1:2,5)],total_infobox[,c(3:4,5)])
+  names(character_df) <- c('attribute','value','name')
   character_df <- filter(character_df,attribute!=value)
   character_df$url <- all_npc_urls[i]
-  character_df$name <- names(infobox_df)[1]
-  
+
   if(i == 1){
     all_characters_df <- character_df
   }
@@ -68,7 +81,7 @@ for(i in 1:length(all_npc_urls)){
   
 }
 
-write.csv(all_characters_df,'data/skyrim_npcs_with_infobox.csv',row.names = F)
+write.csv(all_characters_df,'data/skyrim_npcs_named.csv',row.names = F)
 
 no_infobox_df <- data.frame(url=unmapped_characters,stringsAsFactors = F)
-write.csv(no_infobox_df,'data/skyrim_npcs_urls_without_infobox.csv',row.names = F)
+write.csv(no_infobox_df,'data/skyrim_npcs_unnamed_urls.csv',row.names = F)
